@@ -17,9 +17,13 @@ import { ConnectWallet } from "./ConnectWallet";
 import Home from "./pages/Home";
 import { TransactionErrorMessage } from "./TransactionErrorMessage";
 import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import NavBar from "./Layout/Navbar";
+import ThreadHome from "./ThreadHome";
+import { LogoAndWelcome } from "./views/LogoAndWelcome";
 
 // This is the default id used by the Hardhat Network
-const GALADRIEL_NETWORK_ID = '696969';
+const GALADRIEL_NETWORK_ID = "696969";
 
 // This is an error code that indicates that the user canceled a transaction
 const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
@@ -53,7 +57,7 @@ export class Dapp extends React.Component {
       waitingResult: false,
       chatId: 0,
       inputPrompt: undefined,
-      llmResponse: undefined
+      llmResponse: undefined,
     };
 
     this.state = this.initialState;
@@ -75,8 +79,8 @@ export class Dapp extends React.Component {
     // clicks a button. This callback just calls the _connectWallet method.
     if (!this.state.selectedAddress) {
       return (
-        <ConnectWallet 
-          connectWallet={() => this._connectWallet()} 
+        <ConnectWallet
+          connectWallet={() => this._connectWallet()}
           networkError={this.state.networkError}
           dismiss={() => this._dismissNetworkError()}
         />
@@ -85,42 +89,50 @@ export class Dapp extends React.Component {
 
     // If everything is loaded, we render the application.
     return (
-      <div className="container p-4">
-        <div className="row">
-          <div className="col-12">
-            <p>
-              Welcome <b>{this.state.selectedAddress}</b>!
-            </p>
-          </div>
-        </div>
+      <div className="dapp">
+        <Router>
+          {/*<NavBar />*/}
+          {/*<div className="row">*/}
+          {/*  <div className="col-12">*/}
+          {/*    <p>*/}
+          {/*      Welcome <b>{this.state.selectedAddress}</b>!*/}
+          {/*    </p>*/}
+          {/*  </div>*/}
+          {/*</div>*/}
+          <LogoAndWelcome user={this.state.selectedAddress} />
 
-        <hr />
-
-        <div className="row">
-          <div className="col-12">
-            {/* 
+          <div className="row">
+            <div className="col-12">
+              {/*
               Sending a transaction isn't an immediate action. You have to wait
               for it to be mined.
               If we are waiting for one, we show a message here.
             */}
-            {this.state.txBeingSent && (
-              <WaitingForTransactionMessage txHash={this.state.txBeingSent} />
-            )}
+              {this.state.txBeingSent && (
+                <WaitingForTransactionMessage txHash={this.state.txBeingSent} />
+              )}
 
-            {/* 
+              {/*
               Sending a transaction can fail in multiple ways. 
               If that happened, we show a message here.
             */}
-            {this.state.transactionError && (
-              <TransactionErrorMessage
-                message={this._getRpcErrorMessage(this.state.transactionError)}
-                dismiss={() => this._dismissTransactionError()}
-              />
-            )}
+              {this.state.transactionError && (
+                <TransactionErrorMessage
+                  message={this._getRpcErrorMessage(
+                    this.state.transactionError,
+                  )}
+                  dismiss={() => this._dismissTransactionError()}
+                />
+              )}
+            </div>
           </div>
-        </div>
 
-        <Home
+          <Routes>
+            <Route
+              path="/"
+              exact
+              element={
+                <Home
                   props={{
                     selectedAddress: this.state.selectedAddress,
                     balance: this.state.balance,
@@ -130,9 +142,28 @@ export class Dapp extends React.Component {
                     _pay: (prompt) => this._pay(prompt),
                     waitingResult: this.state.waitingResult,
                     llmResponse: this.state.llmResponse,
+                    type: "/",
                   }}
                 />
-
+              }
+            />
+            <Route
+              path="/threads"
+              exact
+              element={<ThreadHome type="/threads" />}
+            />
+            <Route
+              path="/favourate"
+              exact
+              element={<ThreadHome type="/favourate" />}
+            />
+            <Route
+              path="/useful"
+              exact
+              element={<ThreadHome type="/useful" />}
+            />
+          </Routes>
+        </Router>
       </div>
     );
   }
@@ -153,7 +184,7 @@ export class Dapp extends React.Component {
 
       const receipt = await tx.wait();
       const event = receipt.events.find(
-        (event) => event.event === "ChatCreated"
+        (event) => event.event === "ChatCreated",
       );
       const [_sender, _chatId] = event.args;
       this.setState({
@@ -161,17 +192,13 @@ export class Dapp extends React.Component {
         inputPrompt: prompt,
         llmResponse: undefined,
         chatId: _chatId,
+        waitingResult: true,
       });
 
       // The receipt, contains a status flag, which is 0 to indicate an error.
       if (receipt.status === 0) {
         throw new Error("Transaction failed");
       }
-      // If we got here, the transaction was successful. The user has successfully
-      // paid and the server should dispatch the work to worker
-      this.setState({ waitingResult: true });
-
-      // waitingResult will be set to false when event listener has seen the corresponding job submission event
     } catch (error) {
       // We check the error code to see if this error was produced because the
       // user rejected a tx. If that's the case, we do nothing.
@@ -191,7 +218,9 @@ export class Dapp extends React.Component {
 
     // To connect to the user's wallet, we have to run this method.
     // It returns a promise that will resolve to the user's address.
-    const [selectedAddress] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const [selectedAddress] = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
 
     // Once we have the address, we can initialize the application.
 
@@ -206,11 +235,11 @@ export class Dapp extends React.Component {
       // `accountsChanged` event can be triggered with an undefined newAddress.
       // This happens when the user removes the Dapp from the "Connected
       // list of sites allowed access to your addresses" (Metamask > Settings > Connections)
-      // To avoid errors, we reset the dapp state 
+      // To avoid errors, we reset the dapp state
       if (newAddress === undefined) {
         return this._resetState();
       }
-      
+
       this._initialize(newAddress);
     });
 
@@ -259,8 +288,8 @@ export class Dapp extends React.Component {
     this._contract = new ethers.Contract(
       chatSingleContractAddress.ChatSingle,
       ChatSingleArtifact.abi,
-      this._provider.getSigner(0)
-    )
+      this._provider.getSigner(0),
+    );
   }
 
   // The next two methods are needed to start and stop polling data. While
@@ -271,7 +300,10 @@ export class Dapp extends React.Component {
   // don't need to poll it. If that's the case, you can just fetch it when you
   // initialize the app, as we do with the token data.
   _startPollingData() {
-    this._pollDataInterval = setInterval(() => this._checkMessageContents(), 1000);
+    this._pollDataInterval = setInterval(
+      () => this._checkMessageContents(),
+      1000,
+    );
 
     // We run it once immediately so we don't have to wait for it
     this._checkMessageContents();
@@ -285,15 +317,18 @@ export class Dapp extends React.Component {
   async _checkMessageContents() {
     if (this.state.chatId) {
       try {
-        const messageContents = await this._contract.getMessageHistoryContents(this.state.chatId);
+        const messageContents = await this._contract.getMessageHistoryContents(
+          this.state.chatId,
+        );
         if (messageContents.length >= 2) {
-          this.setState({llmResponse: messageContents[1], waitingResult: false})
+          this.setState({
+            llmResponse: messageContents[1],
+            waitingResult: false,
+          });
         }
-        
       } catch (error) {}
     }
   }
-
 
   // This method just clears part of the state.
   _dismissTransactionError() {
@@ -321,7 +356,7 @@ export class Dapp extends React.Component {
   }
 
   async _switchChain() {
-    const chainIdHex = `0x${GALADRIEL_NETWORK_ID.toString(16)}`
+    const chainIdHex = `0x${GALADRIEL_NETWORK_ID.toString(16)}`;
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
       params: [{ chainId: chainIdHex }],

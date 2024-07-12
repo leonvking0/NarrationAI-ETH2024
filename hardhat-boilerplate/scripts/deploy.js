@@ -14,7 +14,7 @@ async function main() {
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
   const ChatSingle = await ethers.getContractFactory("ChatSingle");
-  const oracleAddress = ethers.utils.getAddress("0xEcdeb01037C848515e12158Dae412dc2b86EB066");
+  const oracleAddress = ethers.utils.getAddress("0x0352b37E5680E324E804B5A6e1AddF0A064E201D");
   const chatSingle = await ChatSingle.deploy(oracleAddress);
   await chatSingle.deployed();
 
