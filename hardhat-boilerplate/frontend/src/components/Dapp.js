@@ -6,19 +6,22 @@ import { ethers } from "ethers";
 // We import the contract's artifacts and address here, as we are going to be
 // using them with ethers
 
-import ChatSingleArtifact from "../contracts/ChatSingle.json";
-import chatSingleContractAddress from "../contracts/chat-contract-address.json";
+import agentArtifact from "../contracts/Agent.json";
+import agentContractAddress from "../contracts/agent-contract-address.json";
+
 
 // All the logic of this dapp is contained in the Dapp component.
 // These other components are just presentational ones: they don't have any
 // logic. They just render HTML.
 import { NoWalletDetected } from "./NoWalletDetected";
-import { ConnectWallet } from "./ConnectWallet";
+import { WalletProvider } from "./hooks/WalletProvider";
+import { WalletList } from "./WalletList";
+
+
 import Home from "./pages/Home";
 import { TransactionErrorMessage } from "./TransactionErrorMessage";
 import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import NavBar from "./Layout/Navbar";
 import ThreadHome from "./ThreadHome";
 import { LogoAndWelcome } from "./views/LogoAndWelcome";
 
@@ -48,7 +51,6 @@ export class Dapp extends React.Component {
       // The info of the token (i.e. It's Name and symbol)
       tokenData: undefined,
       // The user's address and balance
-      selectedAddress: undefined,
       balance: undefined,
       // The ID about transactions being sent, and any possible error with them
       txBeingSent: undefined,
@@ -57,7 +59,7 @@ export class Dapp extends React.Component {
       waitingResult: false,
       chatId: 0,
       inputPrompt: undefined,
-      llmResponse: undefined,
+      llmResponse: undefined
     };
 
     this.state = this.initialState;
@@ -77,95 +79,81 @@ export class Dapp extends React.Component {
     //
     // Note that we pass it a callback that is going to be called when the user
     // clicks a button. This callback just calls the _connectWallet method.
-    if (!this.state.selectedAddress) {
-      return (
-        <ConnectWallet
-          connectWallet={() => this._connectWallet()}
-          networkError={this.state.networkError}
-          dismiss={() => this._dismissNetworkError()}
-        />
-      );
-    }
-
     // If everything is loaded, we render the application.
     return (
-      <div className="dapp">
-        <Router>
-          {/*<NavBar />*/}
-          {/*<div className="row">*/}
-          {/*  <div className="col-12">*/}
-          {/*    <p>*/}
-          {/*      Welcome <b>{this.state.selectedAddress}</b>!*/}
-          {/*    </p>*/}
-          {/*  </div>*/}
-          {/*</div>*/}
-          <LogoAndWelcome user={this.state.selectedAddress} />
 
-          <div className="row">
-            <div className="col-12">
-              {/*
+        <WalletProvider>
+          <div className="dapp">
+            <WalletList />
+            <LogoAndWelcome />
+            <Router>
+              <div className="row">
+                <div className="col-12">
+                  {/*
               Sending a transaction isn't an immediate action. You have to wait
               for it to be mined.
               If we are waiting for one, we show a message here.
             */}
-              {this.state.txBeingSent && (
-                <WaitingForTransactionMessage txHash={this.state.txBeingSent} />
-              )}
+                  {this.state.txBeingSent && (
+                      <WaitingForTransactionMessage txHash={this.state.txBeingSent} />
+                  )}
 
-              {/*
-              Sending a transaction can fail in multiple ways. 
+                  {/*
+              Sending a transaction can fail in multiple ways.
               If that happened, we show a message here.
             */}
-              {this.state.transactionError && (
-                <TransactionErrorMessage
-                  message={this._getRpcErrorMessage(
-                    this.state.transactionError,
+                  {this.state.transactionError && (
+                      <TransactionErrorMessage
+                          message={this._getRpcErrorMessage(
+                              this.state.transactionError
+                          )}
+                          dismiss={() => this._dismissTransactionError()}
+                      />
                   )}
-                  dismiss={() => this._dismissTransactionError()}
-                />
-              )}
-            </div>
-          </div>
+                </div>
+              </div>
 
-          <Routes>
-            <Route
-              path="/"
-              exact
-              element={
-                <Home
-                  props={{
-                    selectedAddress: this.state.selectedAddress,
-                    balance: this.state.balance,
-                    txBeingSent: this.state.txBeingSent,
-                    transactionError: this.state.transactionError,
-                    _dismissTransactionError: () => this._dismissNetworkError(),
-                    _pay: (prompt) => this._pay(prompt),
-                    waitingResult: this.state.waitingResult,
-                    llmResponse: this.state.llmResponse,
-                    type: "/",
-                  }}
+              <Routes>
+                <Route
+                    path="/"
+                    exact
+                    element={
+                      <Home
+                          props={{
+                            balance: this.state.balance,
+                            txBeingSent: this.state.txBeingSent,
+                            transactionError: this.state.transactionError,
+                            _dismissTransactionError: () => this._dismissNetworkError(),
+                            _pay: (prompt) => this._pay(prompt),
+                            waitingResult: this.state.waitingResult,
+                            llmResponse: this.state.llmResponse,
+                            type: "/"
+                          }}
+                      />
+                    }
                 />
-              }
-            />
-            <Route
-              path="/threads"
-              exact
-              element={<ThreadHome type="/threads" />}
-            />
-            <Route
-              path="/favourate"
-              exact
-              element={<ThreadHome type="/favourate" />}
-            />
-            <Route
-              path="/useful"
-              exact
-              element={<ThreadHome type="/useful" />}
-            />
-          </Routes>
-        </Router>
-      </div>
-    );
+                <Route
+                    path="/threads"
+                    exact
+                    element={<ThreadHome type="/threads" />}
+                />
+                <Route
+                    path="/favourate"
+                    exact
+                    element={<ThreadHome type="/favourate" />}
+                />
+                <Route
+                    path="/useful"
+                    exact
+                    element={<ThreadHome type="/useful" />}
+                />
+              </Routes>
+            </Router>
+          </div>
+        </WalletProvider>
+
+    )
+        ;
   }
 
   componentWillUnmount() {
@@ -176,15 +164,16 @@ export class Dapp extends React.Component {
 
   async _pay(prompt) {
     try {
+      this._initializeEthers()
       console.log("entering pay function");
       this._dismissTransactionError();
       const options = {};
       this.setState({ prompt: prompt });
-      const tx = await this._contract.startChat(prompt, options);
+      const tx = await this._contract.runAgent(prompt, 4, options);
 
       const receipt = await tx.wait();
       const event = receipt.events.find(
-        (event) => event.event === "ChatCreated",
+          (event) => event.event === "AgentRunCreated"
       );
       const [_sender, _chatId] = event.args;
       this.setState({
@@ -192,7 +181,7 @@ export class Dapp extends React.Component {
         inputPrompt: prompt,
         llmResponse: undefined,
         chatId: _chatId,
-        waitingResult: true,
+        waitingResult: true
       });
 
       // The receipt, contains a status flag, which is 0 to indicate an error.
@@ -212,65 +201,8 @@ export class Dapp extends React.Component {
     }
   }
 
-  async _connectWallet() {
-    // This method is run when the user clicks the Connect. It connects the
-    // dapp to the user's wallet, and initializes it.
-
-    // To connect to the user's wallet, we have to run this method.
-    // It returns a promise that will resolve to the user's address.
-    const [selectedAddress] = await window.ethereum.request({
-      method: "eth_requestAccounts",
-    });
-
-    // Once we have the address, we can initialize the application.
-
-    // First we check the network
-    this._checkNetwork();
-
-    this._initialize(selectedAddress);
-
-    // We reinitialize it whenever the user changes their account.
-    window.ethereum.on("accountsChanged", ([newAddress]) => {
-      this._stopPollingData();
-      // `accountsChanged` event can be triggered with an undefined newAddress.
-      // This happens when the user removes the Dapp from the "Connected
-      // list of sites allowed access to your addresses" (Metamask > Settings > Connections)
-      // To avoid errors, we reset the dapp state
-      if (newAddress === undefined) {
-        return this._resetState();
-      }
-
-      this._initialize(newAddress);
-    });
-
-    // listen to contract llmResponse event
-    // this._contract.on(
-    //   "LLMReplied",
-    //   async (_chatId, _response) => {
-    //     console.log(
-    //       "see a result event: ",
-    //       _chatId,
-    //       "expecting result for chat: ",
-    //       this.state.chatId
-    //     );
-    //     if (typeof this.state.chatId !== "undefined") {
-    //       if (_chatId.eq(this.state.chatId)) {
-    //         console.log("see result for job: ", _chatId);
-    //         this.setState({ llmResponse: _response, waitingResult: false });
-    //         console.log("changed llmResponse field to: ", _response);
-    //       }
-    //     }
-    //   }
-    // );
-  }
-
-  _initialize(userAddress) {
+  _initialize() {
     // This method initializes the dapp
-
-    // We first store the user's address in the component's state
-    this.setState({
-      selectedAddress: userAddress,
-    });
 
     // Then, we initialize ethers, fetch the token's data, and start polling
     // for the user's balance.
@@ -286,9 +218,9 @@ export class Dapp extends React.Component {
     this._provider = new ethers.providers.Web3Provider(window.ethereum);
 
     this._contract = new ethers.Contract(
-      chatSingleContractAddress.ChatSingle,
-      ChatSingleArtifact.abi,
-      this._provider.getSigner(0),
+        agentContractAddress.contract,
+        agentArtifact.abi,
+        this._provider.getSigner(0)
     );
   }
 
@@ -301,8 +233,8 @@ export class Dapp extends React.Component {
   // initialize the app, as we do with the token data.
   _startPollingData() {
     this._pollDataInterval = setInterval(
-      () => this._checkMessageContents(),
-      1000,
+        () => this._checkMessageContents(),
+        1000
     );
 
     // We run it once immediately so we don't have to wait for it
@@ -318,15 +250,16 @@ export class Dapp extends React.Component {
     if (this.state.chatId) {
       try {
         const messageContents = await this._contract.getMessageHistoryContents(
-          this.state.chatId,
+            this.state.chatId
         );
         if (messageContents.length >= 2) {
           this.setState({
             llmResponse: messageContents[1],
-            waitingResult: false,
+            waitingResult: false
           });
         }
-      } catch (error) {}
+      } catch (error) {
+      }
     }
   }
 
@@ -359,9 +292,9 @@ export class Dapp extends React.Component {
     const chainIdHex = `0x${GALADRIEL_NETWORK_ID.toString(16)}`;
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId: chainIdHex }],
+      params: [{ chainId: chainIdHex }]
     });
-    await this._initialize(this.state.selectedAddress);
+    await this._initialize();
   }
 
   // This method checks if the selected network is Localhost:8545

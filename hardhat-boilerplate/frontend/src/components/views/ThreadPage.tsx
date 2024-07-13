@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import { Stack, SxProps } from "@mui/system";
 import React, {useState} from "react";
-import {LabelWithVote, mockThreadContents, ThreadContent} from "../statics/threadMockData";
+import {LabelWithVote, ThreadContent} from "../statics/threadMockData";
 import { theme } from "../statics/Utils";
 import styled from "@emotion/styled";
 import {
@@ -38,6 +38,7 @@ export interface Chat {
   chatid: number;
   query: string;
   response: string;
+  image: string;
 }
 
 
@@ -46,78 +47,79 @@ export const ThreadPage: React.FC<{ type: threadType }> = ({ type }) => {
   fetch("api/chats", {method: "GET"}).then(checkStatus).then(parseJSON).then(x => setState(x));
 
   const threadContents: ThreadContent[] = chats.map((chat: Chat, index: number) => {
-    return {query: chat.query, response: chat.response, labelsWithVote: []}
+    return {query: chat.query, response: chat.response, image: chat.image, labelsWithVote: []}
   })
   return (
-    <ThemeProvider theme={theme}>
-      <Stack>
-        <Tabs />
-        <Paper elevation={2} sx={pageProps}>
-          <Stack gap={3}>
-            <div>
-              <Typography
-                variant="h3"
-                sx={{ fontFamily: "math", fontWeight: "bold" }}
-              >
-                Thread of thoughts
-              </Typography>
-              <StyledUnderline />
-            </div>
-            {threadContents.map((content: ThreadContent, index: number) => (
-              <ThreadCard key={index} content={content} />
-            ))}
-          </Stack>
-        </Paper>
-      </Stack>
-    </ThemeProvider>
+      <ThemeProvider theme={theme}>
+        <Stack>
+          <Tabs />
+          <Paper elevation={2} sx={pageProps}>
+            <Stack gap={3}>
+              <div>
+                <Typography
+                    variant="h3"
+                    sx={{ fontFamily: "math", fontWeight: "bold" }}
+                >
+                  Generated Stories
+                </Typography>
+                <StyledUnderline />
+              </div>
+              {threadContents.map((content: ThreadContent, index: number) => (
+                  <ThreadCard key={index} content={content} />
+              ))}
+            </Stack>
+          </Paper>
+        </Stack>
+      </ThemeProvider>
   );
 };
 
 const ThreadCard: React.FC<{ content: ThreadContent }> = ({ content }) => {
   return (
-    <Card
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-start",
-        justifyItems: "flex-start",
-        padding: "24px",
-        bgcolor: "background.default",
-        borderRadius: 5,
-        gap: 2,
-      }}
-    >
-      <Typography variant="h6">
-        <strong>Query: </strong>
-        {content.query}
-      </Typography>
-      <Divider
-        orientation="horizontal"
-        variant="fullWidth"
-        sx={{ bgColor: "red", width: "100%" }}
-      />
-      <Typography paragraph variant="h6" sx={{}}>
-        <strong>Response: </strong>
-        {content.response}
-      </Typography>
-      <Stack
-        direction="row"
-        sx={{ justifyContent: "flex-end", gap: 2, width: "100%" }}
+      <Card
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            justifyItems: "flex-start",
+            padding: "24px",
+            bgcolor: "background.default",
+            borderRadius: 5,
+            gap: 2
+          }}
       >
-        <Fab aria-label="funny">
-          <InsertEmoticon fontSize="large" />
-        </Fab>
-        <Fab aria-label="buggy">
-          <BugReport fontSize="large" />
-        </Fab>
-        <Fab aria-label="valueble">
-          <Favorite fontSize="large" />
-        </Fab>
-        <Fab aria-label="professional">
-          <WorkOutline fontSize="large" />
-        </Fab>
-      </Stack>
-    </Card>
+        <Typography variant="h6">
+          <strong>Query: </strong>
+          {content.query}
+        </Typography>
+        <Divider
+            orientation="horizontal"
+            variant="fullWidth"
+            sx={{ bgColor: "red", width: "100%" }}
+        />
+        <Typography paragraph variant="h6" sx={{}}>
+          <strong>Response: </strong>
+          {content.response}
+        </Typography>
+        <img src={content.image} width="500" height="500"/>
+        <Stack
+            direction="row"
+            sx={{ justifyContent: "flex-end", gap: 2, width: "100%" }}
+        >
+          <Fab aria-label="funny">
+            <InsertEmoticon fontSize="large" />
+          </Fab>
+          <Fab aria-label="buggy">
+            <BugReport fontSize="large" />
+          </Fab>
+          <Fab aria-label="valueble">
+            <Favorite fontSize="large" />
+          </Fab>
+          <Fab aria-label="professional">
+            <WorkOutline fontSize="large" />
+          </Fab>
+        </Stack>
+      </Card>
   );
 };
 
@@ -147,8 +149,8 @@ const StyledUnderline = styled.div`
       rgba(186, 12, 248, 1) 80%,
       rgba(251, 7, 217, 1) 90%,
       rgba(255, 0, 0, 1) 100%
-    )
-    0 0/200% 100%;
+  )
+  0 0/200% 100%;
   animation: a 2s linear infinite;
   height: 3px;
   width: 500px;

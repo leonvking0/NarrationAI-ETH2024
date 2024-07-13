@@ -1,19 +1,24 @@
 import sqlite3
 from sqlite3 import Error
 from dataclasses import dataclass
+from typing import Tuple
 from web3 import Web3
 import json
 import os
 import sys
 import time
 
+contract_address_file = "../frontend/src/contracts/agent-contract-address.json"
+contract_abi_file = "../frontend/src/contracts/Agent.json"
+
 @dataclass
 class Chat:
     chat_id: int
     query: str
     response: str
+    image: str = ''
 
-DATABASE = "chats.db"
+DATABASE = "agents.db"
 
 def create_connection(db_file):
     """ Create a database connection to a SQLite database """
@@ -32,7 +37,8 @@ def create_table(conn):
         CREATE TABLE IF NOT EXISTS chats (
             chatid INTEGER PRIMARY KEY,
             query TEXT NOT NULL,
-            response TEXT NOT NULL
+            response TEXT NOT NULL,
+            image TEXT
         );
         """
         cursor = conn.cursor()
@@ -54,11 +60,11 @@ def query_chat_id_set(conn):
         row = cursor.fetchone()
     return result
 
-def insert_chat(conn, chat):
+def insert_chat(conn, chat: Tuple):
     """ Insert a new user into the users table """
     sql_insert_user = """
-    INSERT INTO chats (chatid, query, response)
-    VALUES (?, ?, ?);
+    INSERT INTO chats (chatid, query, response, image)
+    VALUES (?, ?, ?, ?);
     """
     cursor = conn.cursor()
     cursor.execute(sql_insert_user, chat)
@@ -66,7 +72,7 @@ def insert_chat(conn, chat):
     print(f"Chat {chat[0]} added successfully")
 
 
-def create_and_save_table(chats):
+def create_and_save_table():
     database = DATABASE
     # Create a database connection
     conn = create_connection(database)
@@ -76,9 +82,6 @@ def create_and_save_table(chats):
         create_table(conn)
     else:
         print("Error! Cannot create the database connection.")
-
-    for chat in chats:
-        insert_chat(conn, chat)
 
     # Close the connection
     if conn:
@@ -99,11 +102,10 @@ def extract_full_chat_history(skip_chatid_set=set()):
         print("Connected to Ethereum node")
     else:
         print("Failed to connect to Ethereum node")
-    contract_address_file = "../frontend/src/contracts/chat-contract-address.json"
-    contract_abi_file = "../frontend/src/contracts/ChatSingle.json"
+
     with open(contract_address_file, "r") as f:
         temp = json.load(f)
-        contract_address = temp["ChatSingle"]
+        contract_address = temp["contract"]
     with open(contract_abi_file, "r") as f:
         temp = json.load(f)
         contract_abi = temp["abi"]
@@ -121,10 +123,19 @@ def extract_full_chat_history(skip_chatid_set=set()):
             value = contract.functions.getMessageHistoryContents(chat_id).call()
             if len(value) < 1:
                 break
-            if len(value) < 2:
+            if len(value) < 3:
+                # 0 for system prompt, 1 for user query, 2 & 3 for response and image link
                 chat_id += 1
                 continue
-            result.append((chat_id, value[0], value[1]))
+            query = value[1]
+            roles = contract.functions.getMessageHistoryRoles(chat_id).call()
+            if roles[2].startswith("assis"):
+                response = value[2]
+                image = value[3].split(";")[0]
+            else:
+                response = value[3]
+                image = value[2].split(";")[0]
+            result.append((chat_id, query, response, image))
             chat_id += 1
             print(f"The value returned by the contract is: {value}")
         except Exception as e:
@@ -132,32 +143,10 @@ def extract_full_chat_history(skip_chatid_set=set()):
             break
     return result
 
-def listen_to_event():
-    galadriel_url = "https://devnet.galadriel.com"
-    web3 = Web3(Web3.HTTPProvider(galadriel_url))
-
-    # Check if connection is successful
-    if web3.is_connected():
-        print("Connected to Ethereum node")
-    else:
-        print("Failed to connect to Ethereum node")
-    contract_address_file = "../frontend/src/contracts/chat-contract-address.json"
-    contract_abi_file = "../frontend/src/contracts/ChatSingle.json"
-    with open(contract_address_file, "r") as f:
-        temp = json.load(f)
-        contract_address = temp["ChatSingle"]
-    with open(contract_abi_file, "r") as f:
-        temp = json.load(f)
-        contract_abi = temp["abi"]
-
-    # Create contract instance
-    contract = web3.eth.contract(address=contract_address, abi=contract_abi)
-
 
 if __name__ == '__main__':
     if not os.path.exists(DATABASE):
-        chats = extract_full_chat_history()
-        create_and_save_table(chats)
+        create_and_save_table()
 
     database = DATABASE
     # Create a database connection

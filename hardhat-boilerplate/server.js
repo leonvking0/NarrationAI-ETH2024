@@ -13,15 +13,18 @@ if (process.env.NODE_ENV === "production") {
     app.use(express.static("frontend/build"));
 }
 
+DB_FILENAME = "scripts/agents.db"
+
 const COLUMNS = [
     "chatid",
     "query",
     "response",
+    "image"
 ];
 app.get("/api/chats", (req, res) => {
     // WARNING: Not for production use! The following statement
     // is not protected against SQL injections.
-    const filebuffer = fs.readFileSync("scripts/chats.db");
+    const filebuffer = fs.readFileSync(DB_FILENAME);
 
     const db = new sqlite.Database(filebuffer);
     const r = db.exec(
@@ -46,20 +49,20 @@ app.get("/api/chats", (req, res) => {
 });
 
 app.post("/api/add",  express.json({type: '*/*'}), (req, res) => {
-  const filebuffer = fs.readFileSync("scripts/chats.db");
-  const db = new sqlite.Database(filebuffer);
-  console.log(req.body);
-  let chatid = req.body.chatid;
-  let query = req.body.query;
-  let response = req.body.response;
-  console.log(chatid);
-  console.log(query);
-  console.log(response);
+    const filebuffer = fs.readFileSync(DB_FILENAME);
+    const db = new sqlite.Database(filebuffer);
+    console.log(req.body);
+    let chatid = req.body.chatid;
+    let query = req.body.query;
+    let response = req.body.response;
+    console.log(chatid);
+    console.log(query);
+    console.log(response);
     // insert query
-  const r = db.exec(`INSERT INTO chats VALUES (${chatid}, "${query}", "${response}")`);
-  console.log(r);
-  res.json([]);
-  db.close();
+    const r = db.exec(`INSERT INTO chats VALUES (${chatid}, "${query}", "${response}")`);
+    console.log(r);
+    res.json([]);
+    db.close();
 });
 
 app.listen(app.get("port"), () => {
