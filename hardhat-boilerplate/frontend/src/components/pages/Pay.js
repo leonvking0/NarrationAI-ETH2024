@@ -16,7 +16,7 @@ export function Pay({ payFunc }) {
   return (
     <Stack gap={3}>
       <Typography variant="h4" sx={{ fontFamily: "math", fontWeight: "bold" }}>
-        Input prompt for on chain query of ChatGPT
+        Start a new story
       </Typography>
       <form onSubmit={onSubmit}>
         <div className="form-group">

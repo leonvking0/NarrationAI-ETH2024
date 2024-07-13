@@ -9,6 +9,9 @@ import { ethers } from "ethers";
 import agentArtifact from "../contracts/Agent.json";
 import agentContractAddress from "../contracts/agent-contract-address.json";
 import pathAgentContractAddress from "../contracts/path-agent-contract-address.json";
+import voteContractAddress from "../contracts/vote-contract-address.json";
+import voteArtifact from "../contracts/Vote.json";
+
 
 
 // All the logic of this dapp is contained in the Dapp component.
@@ -137,7 +140,7 @@ export class Dapp extends React.Component {
                     path="/threads"
                     exact
                     // element={<ThreadHome props={{type:"/threads", fn: (p) => this._pathGen(p)}} />}
-                    element={<ThreadHome type="/threads" fn={(p) => this._pathGen(p)} />}
+                    element={<ThreadHome type="/threads" fn={(p) => this._pathGen(p)} like={(uid)=>this._like(uid)}/>}
                 />
 
               </Routes>
@@ -229,6 +232,34 @@ export class Dapp extends React.Component {
     }
   }
 
+  async _like(uid) {
+    try {
+      this._initializeEthers()
+      console.log("entering like function");
+      this._dismissTransactionError();
+      const options = {};
+      const tx = await this._voteContract.like(uid, options);
+      const receipt = await tx.wait();
+      this.setState({
+        txBeingSent: tx.hash,
+      });
+      // The receipt, contains a status flag, which is 0 to indicate an error.
+      if (receipt.status === 0) {
+        throw new Error("Transaction failed");
+      }
+    } catch (error) {
+      // We check the error code to see if this error was produced because the
+      // user rejected a tx. If that's the case, we do nothing.
+      if (error.code === ERROR_CODE_TX_REJECTED_BY_USER) {
+        return;
+      }
+      console.error(error);
+      this.setState({ transactionError: error });
+    } finally {
+      this.setState({ txBeingSent: undefined });
+    }
+  }
+
   _initialize() {
     // This method initializes the dapp
 
@@ -243,18 +274,33 @@ export class Dapp extends React.Component {
 
   async _initializeEthers() {
     // We first initialize ethers by creating a provider using window.ethereum
-    this._provider = new ethers.providers.Web3Provider(window.ethereum);
+    if (this._provider === undefined) {
+      this._provider = new ethers.providers.Web3Provider(window.ethereum);
+    }
 
-    this._contract = new ethers.Contract(
-        agentContractAddress.contract,
-        agentArtifact.abi,
-        this._provider.getSigner(0)
-    );
-    this._pathAgentContract = new ethers.Contract(
-        pathAgentContractAddress.contract,
-        agentArtifact.abi,
-        this._provider.getSigner(0)
-    );
+    if (this._contract === undefined) {
+      this._contract = new ethers.Contract(
+          agentContractAddress.contract,
+          agentArtifact.abi,
+          this._provider.getSigner(0)
+      );
+    }
+
+    if (this._pathAgentContract === undefined) {
+      this._pathAgentContract = new ethers.Contract(
+          pathAgentContractAddress.contract,
+          agentArtifact.abi,
+          this._provider.getSigner(0)
+      );
+    }
+
+    if (this._voteContract === undefined) {
+      this._voteContract = new ethers.Contract(
+          voteContractAddress.contract,
+          voteArtifact.abi,
+          this._provider.getSigner(0)
+      );
+    }
   }
 
   // The next two methods are needed to start and stop polling data. While

@@ -19,13 +19,13 @@ export const LogoAndWelcome: React.FC<{ user: string }> = ({ user }) => {
       <img
         alt=""
         src={logo}
-        width="100"
-        height="60"
+        width="120"
+        height="120"
         style={{ paddingRight: "8px" }}
         className="d-inline-block align-top"
       />
       <Typography variant="h6">
-        Welcome <b>{user}</b>
+        Welcome to Narrative AI <b>{user}</b>
       </Typography>
       <TagFacesOutlinedIcon />
     </Stack>
