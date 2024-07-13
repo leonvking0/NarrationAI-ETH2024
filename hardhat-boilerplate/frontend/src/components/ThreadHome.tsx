@@ -1,11 +1,13 @@
 import React from "react";
 import "./styles.css";
-import { ThreadPage, threadType } from "./views/ThreadPage";
+import { ThreadPage, threadType, ThreadPageProps } from "./views/ThreadPage";
 
-function ThreadHome(type: threadType) {
-  return (
+function ThreadHome(props: ThreadPageProps) {
+  // props.fn("aa");
+  console.log(props);
+    return (
     <div className="ThreadHome">
-      <ThreadPage type={type} />
+      <ThreadPage props={props}/>
     </div>
   );
 }

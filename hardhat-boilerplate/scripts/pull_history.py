@@ -9,6 +9,7 @@ import sys
 import time
 
 contract_address_file = "../frontend/src/contracts/agent-contract-address.json"
+path_agent_address_file = "../frontend/src/contracts/path-agent-contract-address.json"
 contract_abi_file = "../frontend/src/contracts/Agent.json"
 
 @dataclass
@@ -57,6 +58,21 @@ def query_chat_id_set(conn):
     row = cursor.fetchone()
     while row:
         result.add(int(row[0]))
+        row = cursor.fetchone()
+    return result
+
+def query_path_chat_id_set(conn):
+    result = set()
+    sql_query_table = """
+            SELECT * FROM chats;
+            """
+    cursor = conn.cursor()
+    cursor.execute(sql_query_table)
+    row = cursor.fetchone()
+    while row:
+        if (int(row[0]) < 10000):
+            continue
+        result.add(int(row[0]) % 10000)
         row = cursor.fetchone()
     return result
 
@@ -143,6 +159,65 @@ def extract_full_chat_history(skip_chatid_set=set()):
             break
     return result
 
+def parse_path(text):
+    segments = text.split("\n\n")
+    result = []
+    for s in segments:
+        if "\n" in s:
+            result.append("\n".join(s.split("\n")[1:]))
+        else:
+            result.append(s)
+    return result
+
+
+def extract_full_path_history(skip_chatid_set=set()):
+    # Connect to the Ethereum node
+    galadriel_url = "https://devnet.galadriel.com"
+    web3 = Web3(Web3.HTTPProvider(galadriel_url))
+
+    # Check if connection is successful
+    if web3.is_connected():
+        print("Connected to Ethereum node, pulling path history")
+    else:
+        print("Failed to connect to Ethereum node")
+
+    with open(path_agent_address_file, "r") as f:
+        temp = json.load(f)
+        contract_address = temp["contract"]
+    with open(contract_abi_file, "r") as f:
+        temp = json.load(f)
+        contract_abi = temp["abi"]
+
+    # Create contract instance
+    contract = web3.eth.contract(address=contract_address, abi=contract_abi)
+    result = []
+    chat_id = 0
+    while True:
+        # Call the view function
+        try:
+            if chat_id in skip_chatid_set:
+                chat_id += 1
+                continue
+            value = contract.functions.getMessageHistoryContents(chat_id).call()
+            if len(value) < 1:
+                break
+            if len(value) < 2:
+                # 0 for system prompt, 1 for story opening, 2 for generated path
+                chat_id += 1
+                continue
+
+            response = value[2]
+            segments = parse_path(response)
+            for i, development in enumerate(segments):
+                recorded_chat_id = (i+1)*10000 + chat_id
+                query = f"Development {i+1}"
+                result.append((recorded_chat_id, query, development, ""))
+            chat_id += 1
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            break
+    return result
+
 
 if __name__ == '__main__':
     if not os.path.exists(DATABASE):
@@ -152,7 +227,9 @@ if __name__ == '__main__':
     # Create a database connection
     conn = create_connection(database)
     chatid_set = query_chat_id_set(conn)
+    pathid_set = query_path_chat_id_set(conn)
     print(f"read chaid from db: {chatid_set}")
+    print(f"read path id from db: {chatid_set}")
     while True:
         try:
             chats = extract_full_chat_history(chatid_set)
@@ -161,6 +238,13 @@ if __name__ == '__main__':
             for chat in chats:
                 insert_chat(conn, chat)
                 chatid_set.add(chat[0])
+                print(f"wrote {chat[0]} to db")
+            chats = extract_full_path_history(pathid_set)
+            if len(chats) > 0:
+                print(f"received {len(chats)} new chats, preparing to write to db")
+            for chat in chats:
+                insert_chat(conn, chat)
+                pathid_set.add(chat[0] % 10000)
                 print(f"wrote {chat[0]} to db")
             time.sleep(10)
         except KeyboardInterrupt:

@@ -22,6 +22,16 @@ import { Tabs } from "./Tabs";
 
 export type threadType = "/threads" | "/favourate" | "/useful" | "/";
 
+export interface ThreadPageProps {
+  type: threadType,
+  fn: (a: string) => {}
+}
+
+export interface ThreadCardProps {
+  content: ThreadContent;
+  fn: (a: string) => {}
+}
+
 function checkStatus(response: Response) {
   if (response.status >= 200 && response.status < 300) {
     return response;
@@ -42,13 +52,14 @@ export interface Chat {
 }
 
 
-export const ThreadPage: React.FC<{ type: threadType }> = ({ type }) => {
+export const ThreadPage: React.FC<{ props: ThreadPageProps}> = ({ props }) => {
   const [chats, setState] = useState<Chat[]>([]);
   fetch("api/chats", {method: "GET"}).then(checkStatus).then(parseJSON).then(x => setState(x));
 
   const threadContents: ThreadContent[] = chats.map((chat: Chat, index: number) => {
-    return {query: chat.query, response: chat.response, image: chat.image, labelsWithVote: []}
+    return {chatid: chat.chatid, query: chat.query, response: chat.response, image: chat.image, labelsWithVote: []}
   })
+  // console.log("thread page:", props);
   return (
       <ThemeProvider theme={theme}>
         <Stack>
@@ -65,7 +76,7 @@ export const ThreadPage: React.FC<{ type: threadType }> = ({ type }) => {
                 <StyledUnderline />
               </div>
               {threadContents.map((content: ThreadContent, index: number) => (
-                  <ThreadCard key={index} content={content} />
+                  <ThreadCard key={content.chatid} props={{content, fn: (p) => props.fn(p)}}/>
               ))}
             </Stack>
           </Paper>
@@ -74,7 +85,8 @@ export const ThreadPage: React.FC<{ type: threadType }> = ({ type }) => {
   );
 };
 
-const ThreadCard: React.FC<{ content: ThreadContent }> = ({ content }) => {
+const ThreadCard: React.FC<{ props: ThreadCardProps }> = ({ props }) => {
+  // console.log("card: ", props)
   return (
       <Card
           sx={{
@@ -90,7 +102,7 @@ const ThreadCard: React.FC<{ content: ThreadContent }> = ({ content }) => {
       >
         <Typography variant="h6">
           <strong>Query: </strong>
-          {content.query}
+          {props.content.query}
         </Typography>
         <Divider
             orientation="horizontal"
@@ -99,24 +111,21 @@ const ThreadCard: React.FC<{ content: ThreadContent }> = ({ content }) => {
         />
         <Typography paragraph variant="h6" sx={{}}>
           <strong>Response: </strong>
-          {content.response}
+          {props.content.response}
         </Typography>
-        <img src={content.image} width="500" height="500"/>
+        {props.content.image.startsWith("http") && <img src={props.content.image} width="500" height="500" alt="img"/>}
         <Stack
             direction="row"
             sx={{ justifyContent: "flex-end", gap: 2, width: "100%" }}
         >
-          <Fab aria-label="funny">
-            <InsertEmoticon fontSize="large" />
-          </Fab>
-          <Fab aria-label="buggy">
-            <BugReport fontSize="large" />
-          </Fab>
           <Fab aria-label="valueble">
             <Favorite fontSize="large" />
           </Fab>
           <Fab aria-label="professional">
-            <WorkOutline fontSize="large" />
+            <WorkOutline fontSize="large" onClick={()=>{
+              props.fn(props.content.response);
+            }
+            }/>
           </Fab>
         </Stack>
       </Card>

@@ -2,6 +2,7 @@
 // yours, or create new ones.
 
 const path = require("path");
+const fs = require("fs");
 
 const prompt = `# CONTEXT
 
@@ -36,6 +37,40 @@ Provide your response in the following format:
 Don’t output anything other than these
 `
 
+const pathPrompt = `# CONTEXT
+
+You are an expert in creative storytelling and plot development, with a particular talent for generating innovative ideas for immediate story progression. Your expertise lies in taking the current story context and proposing multiple intriguing short-term developments, each with the potential to move the story forward in a compelling way.
+
+# OBJECTIVE
+
+Your task is to generate four possible immediate developments based on the current context of a story provided by the user. Each development should be a brief description, no more than 2-3 sentences long, that presents a unique and creative direction for the story to take in the short term. These developments should not resolve the entire plot but rather introduce new elements or complications that could shape the next few scenes.
+
+# STYLE
+
+Write in a concise yet evocative style. Each proposed development should be clear and easy to understand, while still conveying the potential for further story expansion. Use vivid language to quickly paint a picture of each potential short-term progression.
+
+# TONE
+
+Maintain an imaginative and thought-provoking tone. Your suggestions should inspire creativity and excitement about the immediate possibilities for the story. Be innovative in your ideas while ensuring they logically extend from the given context and don't prematurely resolve major plot points.
+
+# AUDIENCE
+
+The target audience is writers and storytellers who are looking for ideas to develop their narratives in the short term. Assume an audience that is open to creative suggestions and looking to explore various immediate possibilities for their story without jumping too far ahead.
+
+# RESPONSE FORMAT
+
+Provide your response in the following format:
+Four possible immediate developments, each presented as follows:
+Development #: [Title of the development]
+[Description of the immediate development in 2-3 sentences, focusing on short-term progression]
+
+Don’t output anything other than these`
+
+
+
+
+
+
 async function main() {
     // ethers is available in the global scope
     const [deployer] = await ethers.getSigners();
@@ -53,11 +88,6 @@ async function main() {
 
     console.log("agent address:", agent.address);
 
-    // We also save the contract's artifacts and address in the frontend directory
-    saveFrontendFiles(agent);
-}
-
-function saveFrontendFiles(contract) {
     const fs = require("fs");
     const contractsDir = path.join(__dirname, "..", "frontend", "src", "contracts");
 
@@ -67,7 +97,7 @@ function saveFrontendFiles(contract) {
 
     fs.writeFileSync(
         path.join(contractsDir, "agent-contract-address.json"),
-        JSON.stringify({ "contract": contract.address }, undefined, 2)
+        JSON.stringify({ "contract": agent.address }, undefined, 2)
     );
 
     const TokenArtifact = artifacts.readArtifactSync("Agent");
@@ -76,6 +106,18 @@ function saveFrontendFiles(contract) {
         path.join(contractsDir, "Agent.json"),
         JSON.stringify(TokenArtifact, null, 2)
     );
+
+    const pathAgent = await Agent.deploy(oracleAddress, pathPrompt);
+    await pathAgent.deployed();
+
+    fs.writeFileSync(
+        path.join(contractsDir, "path-agent-contract-address.json"),
+        JSON.stringify({ "contract": pathAgent.address }, undefined, 2)
+    );
+
+
+    // We also save the contract's artifacts and address in the frontend directory
+
 }
 
 main()

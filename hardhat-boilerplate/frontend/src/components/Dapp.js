@@ -8,6 +8,7 @@ import { ethers } from "ethers";
 
 import agentArtifact from "../contracts/Agent.json";
 import agentContractAddress from "../contracts/agent-contract-address.json";
+import pathAgentContractAddress from "../contracts/path-agent-contract-address.json";
 
 
 // All the logic of this dapp is contained in the Dapp component.
@@ -135,18 +136,10 @@ export class Dapp extends React.Component {
                 <Route
                     path="/threads"
                     exact
-                    element={<ThreadHome type="/threads" />}
+                    // element={<ThreadHome props={{type:"/threads", fn: (p) => this._pathGen(p)}} />}
+                    element={<ThreadHome type="/threads" fn={(p) => this._pathGen(p)} />}
                 />
-                <Route
-                    path="/favourate"
-                    exact
-                    element={<ThreadHome type="/favourate" />}
-                />
-                <Route
-                    path="/useful"
-                    exact
-                    element={<ThreadHome type="/useful" />}
-                />
+
               </Routes>
             </Router>
           </div>
@@ -201,6 +194,41 @@ export class Dapp extends React.Component {
     }
   }
 
+  async _pathGen(prompt) {
+    try {
+      this._initializeEthers()
+      console.log("entering pathGen function");
+      this._dismissTransactionError();
+      const options = {};
+      this.setState({ prompt: prompt });
+      const tx = await this._pathAgentContract.runAgent(prompt, 3, options);
+
+      const receipt = await tx.wait();
+      const event = receipt.events.find(
+          (event) => event.event === "AgentRunCreated"
+      );
+      const [_sender, _chatId] = event.args;
+      this.setState({
+        txBeingSent: tx.hash,
+      });
+
+      // The receipt, contains a status flag, which is 0 to indicate an error.
+      if (receipt.status === 0) {
+        throw new Error("Transaction failed");
+      }
+    } catch (error) {
+      // We check the error code to see if this error was produced because the
+      // user rejected a tx. If that's the case, we do nothing.
+      if (error.code === ERROR_CODE_TX_REJECTED_BY_USER) {
+        return;
+      }
+      console.error(error);
+      this.setState({ transactionError: error });
+    } finally {
+      this.setState({ txBeingSent: undefined });
+    }
+  }
+
   _initialize() {
     // This method initializes the dapp
 
@@ -219,6 +247,11 @@ export class Dapp extends React.Component {
 
     this._contract = new ethers.Contract(
         agentContractAddress.contract,
+        agentArtifact.abi,
+        this._provider.getSigner(0)
+    );
+    this._pathAgentContract = new ethers.Contract(
+        pathAgentContractAddress.contract,
         agentArtifact.abi,
         this._provider.getSigner(0)
     );

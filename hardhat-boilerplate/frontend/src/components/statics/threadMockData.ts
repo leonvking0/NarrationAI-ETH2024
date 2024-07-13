@@ -11,6 +11,7 @@ export interface LabelWithVote {
 }
 
 export interface ThreadContent {
+    chatid: number;
     query: string;
     response: string;
     image: string;
