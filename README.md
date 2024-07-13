@@ -40,3 +40,6 @@ NarrationAI: Where AI meets human creativity, where every vote shapes a world, a
 6. **User Interface**
     - Web-based platform for user interactions
     - Displays stories, facilitates voting, and showcases illustrations
+
+# Flowchart
+![Flowchart](https://github.com/leonvking0/NarrationAI-ETH2024/blob/main/NarrativeAI%20Flowchart.png)
