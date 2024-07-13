@@ -115,6 +115,22 @@ async function main() {
         JSON.stringify({ "contract": pathAgent.address }, undefined, 2)
     );
 
+    const Vote = await ethers.getContractFactory("Vote");
+    const vote = await Vote.deploy();
+    await vote.deployed();
+
+    fs.writeFileSync(
+        path.join(contractsDir, "vote-contract-address.json"),
+        JSON.stringify({ "contract": vote.address }, undefined, 2)
+    );
+
+    const voteArtifact = artifacts.readArtifactSync("Vote");
+
+    fs.writeFileSync(
+        path.join(contractsDir, "Vote.json"),
+        JSON.stringify(voteArtifact, null, 2)
+    );
+
 
     // We also save the contract's artifacts and address in the frontend directory
 

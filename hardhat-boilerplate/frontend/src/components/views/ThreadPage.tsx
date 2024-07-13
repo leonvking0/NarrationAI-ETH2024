@@ -23,13 +23,15 @@ import { Tabs } from "./Tabs";
 export type threadType = "/threads" | "/favourate" | "/useful" | "/";
 
 export interface ThreadPageProps {
-  type: threadType,
-  fn: (a: string) => {}
+  type: threadType;
+  fn: (a: string) => {};
+  like: (a: number) => {};
 }
 
 export interface ThreadCardProps {
   content: ThreadContent;
-  fn: (a: string) => {}
+  fn: (a: string) => {};
+  like: (a: number) => {};
 }
 
 function checkStatus(response: Response) {
@@ -76,7 +78,12 @@ export const ThreadPage: React.FC<{ props: ThreadPageProps}> = ({ props }) => {
                 <StyledUnderline />
               </div>
               {threadContents.map((content: ThreadContent, index: number) => (
-                  <ThreadCard key={content.chatid} props={{content, fn: (p) => props.fn(p)}}/>
+                  <ThreadCard key={content.chatid} props={
+                    {content,
+                      fn: (p) => props.fn(p),
+                      like: (uid: number) => props.like(uid)
+                    }
+                  }/>
               ))}
             </Stack>
           </Paper>
@@ -119,7 +126,10 @@ const ThreadCard: React.FC<{ props: ThreadCardProps }> = ({ props }) => {
             sx={{ justifyContent: "flex-end", gap: 2, width: "100%" }}
         >
           <Fab aria-label="valueble">
-            <Favorite fontSize="large" />
+            <Favorite fontSize="large" onClick={()=>{
+              props.like(props.content.chatid);
+            }
+            }/>
           </Fab>
           <Fab aria-label="professional">
             <WorkOutline fontSize="large" onClick={()=>{
