@@ -3,18 +3,12 @@
   "version": "1.0.0",
   "description": "A boilerplate repository to get you started with Hardhat and Ethereum development",
   "scripts": {
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "node server.js",
+    "client": "node start-client.js",
     "test": "hardhat test"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/NomicFoundation/hardhat-boilerplate.git"
-  },
-  "author": "Nomic Foundation",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/NomicFoundation/hardhat-boilerplate/issues"
-  },
-  "homepage": "https://github.com/NomicFoundation/hardhat-boilerplate#readme",
+  "private": true,
   "devDependencies": {
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
@@ -27,9 +21,14 @@
     "ethers": "^5.7.2",
     "hardhat": "^2.12.5",
     "hardhat-gas-reporter": "^1.0.9",
-    "solidity-coverage": "^0.8.2"
+    "solidity-coverage": "^0.8.2",
+    "concurrently": "3.1.0"
   },
   "dependencies": {
-    "@poanet/solidity-flattener": "^3.0.9"
+    "@poanet/solidity-flattener": "^3.0.9",
+    "babel-core": "6.14.0",
+    "express": "4.16.0",
+    "fs": "0.0.2",
+    "sql.js": "0.3.2"
   }
 }

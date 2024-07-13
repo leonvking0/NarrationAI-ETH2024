@@ -8,8 +8,8 @@ import {
   Link,
 } from "@mui/material";
 import { Stack, SxProps } from "@mui/system";
-import React from "react";
-import { mockThreadContents, ThreadContent } from "../statics/threadMockData";
+import React, {useState} from "react";
+import {LabelWithVote, mockThreadContents, ThreadContent} from "../statics/threadMockData";
 import { theme } from "../statics/Utils";
 import styled from "@emotion/styled";
 import {
@@ -22,7 +22,32 @@ import { Tabs } from "./Tabs";
 
 export type threadType = "/threads" | "/favourate" | "/useful" | "/";
 
+function checkStatus(response: Response) {
+  if (response.status >= 200 && response.status < 300) {
+    return response;
+  }
+  const error = new Error(`HTTP Error ${response.statusText}`);
+  console.log(error); // eslint-disable-line no-console
+  throw error;
+}
+
+function parseJSON(response: Response) {
+  return response.json();
+}
+export interface Chat {
+  chatid: number;
+  query: string;
+  response: string;
+}
+
+
 export const ThreadPage: React.FC<{ type: threadType }> = ({ type }) => {
+  const [chats, setState] = useState<Chat[]>([]);
+  fetch("api/chats", {method: "GET"}).then(checkStatus).then(parseJSON).then(x => setState(x));
+
+  const threadContents: ThreadContent[] = chats.map((chat: Chat, index: number) => {
+    return {query: chat.query, response: chat.response, labelsWithVote: []}
+  })
   return (
     <ThemeProvider theme={theme}>
       <Stack>
@@ -38,7 +63,7 @@ export const ThreadPage: React.FC<{ type: threadType }> = ({ type }) => {
               </Typography>
               <StyledUnderline />
             </div>
-            {mockThreadContents.map((content: ThreadContent, index: number) => (
+            {threadContents.map((content: ThreadContent, index: number) => (
               <ThreadCard key={index} content={content} />
             ))}
           </Stack>
